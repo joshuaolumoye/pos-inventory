@@ -1,6 +1,6 @@
 module github.com/joshuaolumoye/pos-backend
 
-go 1.25.1
+go 1.25.0
 
 require (
 	github.com/allegro/bigcache/v3 v3.1.0
