@@ -6,7 +6,7 @@ type Business struct {
 	UpdatedAt        int64   `gorm:"autoUpdateTime" json:"updated_at"`
 	Name             string  `gorm:"not null" json:"name"`
 	OwnerFullName    string  `gorm:"not null" json:"owner_full_name"`
-	Email            string  `gorm:"uniqueIndex;not null" json:"email"`
+	Email            string  `gorm:"uniqueIndex;size:191;not null" json:"email"`
 	PhoneNumber      string  `gorm:"not null" json:"phone_number"`
 	PasswordHash     string  `gorm:"not null" json:"-"`
 	StoreAddress     string  `gorm:"not null" json:"store_address"`
