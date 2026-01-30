@@ -49,7 +49,7 @@ type Staff struct {
 	ID           string    `gorm:"primaryKey;type:char(36)" json:"id"`
 	CreatedAt    int64     `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt    int64     `gorm:"autoUpdateTime" json:"updated_at"`
-	StaffID      string    `gorm:"uniqueIndex;not null" json:"staff_id"`
+	StaffID      string    `gorm:"uniqueIndex;size:191;not null" json:"staff_id"`
 	FullName     string    `gorm:"not null" json:"full_name"`
 	PhoneNumber  string    `gorm:"not null" json:"phone_number"`
 	PasswordHash string    `gorm:"not null" json:"-"`
