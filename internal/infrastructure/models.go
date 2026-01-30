@@ -70,7 +70,7 @@ type Product struct {
 	ProductCategory   string  `gorm:"not null" json:"product_category"`
 	BusinessID        string  `gorm:"index;not null;type:char(36)" json:"business_id"`
 	BranchID          string  `gorm:"index;not null;type:char(36)" json:"branch_id"`
-	BarcodeValue      *string `gorm:"uniqueIndex" json:"barcode_value,omitempty"`
+	BarcodeValue      *string `gorm:"uniqueIndex;size:191" json:"barcode_value,omitempty"`
 	NAFDACRegNumber   *string `json:"nafdac_reg_number,omitempty"`
 	SellingPrice      float64 `gorm:"not null" json:"selling_price"`
 	CostPrice         float64 `gorm:"not null" json:"cost_price"`
