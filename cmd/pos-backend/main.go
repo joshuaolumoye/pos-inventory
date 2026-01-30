@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/cors"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 
@@ -118,6 +120,17 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.LoggingMiddleware)
+
+	// CORS middleware to allow requests from http://localhost:8081
+	corsOptions := cors.Options{
+		AllowedOrigins:   []string{"http://localhost:8081"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}
+	r.Use(cors.Handler(corsOptions))
 
 	// Public endpoints
 	r.Post("/api/business/register", handler.RegisterBusinessHandler)
