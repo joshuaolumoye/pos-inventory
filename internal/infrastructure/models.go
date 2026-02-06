@@ -64,6 +64,34 @@ type Staff struct {
 	Business Business `gorm:"foreignKey:BusinessID" json:"business,omitempty"`
 }
 
+type Sale struct {
+	ID            string  `gorm:"primaryKey;type:char(36)" json:"id"`
+	BusinessID    string  `gorm:"index;not null;type:char(36)" json:"business_id"`
+	BranchID      string  `gorm:"index;not null;type:char(36)" json:"branch_id"`
+	CashierID     string  `gorm:"index;not null;type:char(36)" json:"cashier_id"`
+	TotalAmount   float64 `gorm:"not null" json:"total_amount"`
+	PaymentMethod string  `gorm:"type:varchar(32);not null" json:"payment_method"`
+	Status        string  `gorm:"type:varchar(32);not null" json:"status"`
+	CreatedAt     int64   `gorm:"autoCreateTime" json:"created_at"`
+
+	// Relationships
+	SaleItems []SaleItem `gorm:"foreignKey:SaleID" json:"items,omitempty"`
+}
+
+type SaleItem struct {
+	ID        string  `gorm:"primaryKey;type:char(36)" json:"id"`
+	SaleID    string  `gorm:"index;not null;type:char(36)" json:"sale_id"`
+	ProductID string  `gorm:"index;not null;type:char(36)" json:"product_id"`
+	Quantity  int     `gorm:"not null" json:"quantity"`
+	UnitPrice float64 `gorm:"not null" json:"unit_price"`
+	Subtotal  float64 `gorm:"not null" json:"subtotal"`
+	CreatedAt int64   `gorm:"autoCreateTime" json:"created_at"`
+
+	// Relationships
+	Sale    Sale    `gorm:"foreignKey:SaleID" json:"-"`
+	Product Product `gorm:"foreignKey:ProductID" json:"-"`
+}
+
 type Product struct {
 	ID                string  `gorm:"primaryKey;type:char(36)" json:"id"`
 	ProductName       string  `gorm:"not null" json:"product_name"`
@@ -87,4 +115,14 @@ type Product struct {
 	// Relationships
 	Branch   Branch   `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
 	Business Business `gorm:"foreignKey:BusinessID" json:"business,omitempty"`
+}
+
+type Notification struct {
+	ID               string `gorm:"primaryKey;type:char(36)" json:"id"`
+	BusinessID       string `gorm:"not null" json:"business_id"`
+	ProductID        string `gorm:"not null" json:"product_id"`
+	NotificationType string `gorm:"not null" json:"notification_type"`
+	Message          string `gorm:"not null" json:"message"`
+	IsRead           bool   `gorm:"default:false" json:"is_read"`
+	CreatedAt        int64  `gorm:"autoCreateTime" json:"created_at"`
 }

@@ -32,4 +32,25 @@ type ProductRepository interface {
 	GetLowStockProducts(businessID string) ([]*Product, error)
 	UpdateProductStock(productID string, quantity int) error
 	GetProductsByBranch(branchID string) ([]*Product, error) // Keep for backward compatibility
+	QueryProductsNotification(businessID, op string, stock int, expiry int64, lowStock int, limit, offset int, expired bool) ([]*Product, error)
+	GetAllProductsPaginated(businessID string, limit, offset int) ([]*Product, error)
+	SearchProductsPaginated(businessID, search string, limit, offset int) ([]*Product, error)
+	GetLowStockCount(businessID, branchID string) (int, error)
+}
+
+type Notification struct {
+	ID               string `json:"id"`
+	BusinessID       string `json:"business_id"`
+	ProductID        string `json:"product_id"`
+	NotificationType string `json:"notification_type"`
+	Message          string `json:"message"`
+	IsRead           bool   `json:"is_read"`
+	CreatedAt        int64  `json:"created_at"`
+}
+
+type NotificationRepository interface {
+	CreateNotification(n *Notification) error
+	GetNotifications(businessID string, unreadOnly bool, limit, offset int) ([]*Notification, error)
+	MarkNotificationRead(notificationID, businessID string) error
+	ExistsUnreadLowStockNotification(businessID, productID string) (bool, error)
 }

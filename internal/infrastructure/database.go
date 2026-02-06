@@ -66,6 +66,9 @@ func AutoMigrate(db *gorm.DB) error {
 		&Branch{},
 		&Staff{},
 		&Product{},
+		&Sale{},
+		&SaleItem{},
+		&Notification{},
 	)
 
 	if err != nil {

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"regexp"
 
 	"math/rand"
@@ -29,4 +30,9 @@ func Sanitize(input string) string {
 // GenerateUUID returns a new UUID string
 func GenerateUUID() string {
 	return uuid.New().String()
+}
+
+// Itoa is a helper for int to string conversion
+func Itoa(i int) string {
+	return fmt.Sprintf("%d", i)
 }

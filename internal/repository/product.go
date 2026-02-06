@@ -11,6 +11,19 @@ type ProductRepo struct {
 	DB *sqlx.DB
 }
 
+// GetLowStockCount returns the count of low stock products (optionally filtered by branch)
+func (r *ProductRepo) GetLowStockCount(businessID, branchID string) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM products WHERE business_id = ? AND (deleted_at IS NULL OR deleted_at = 0) AND quantity_in_stock <= low_stock_threshold`
+	args := []interface{}{businessID}
+	if branchID != "" {
+		query += " AND branch_id = ?"
+		args = append(args, branchID)
+	}
+	err := r.DB.QueryRowx(query, args...).Scan(&count)
+	return count, err
+}
+
 func (r *ProductRepo) CreateProduct(p *domain.Product) error {
 	query := `INSERT INTO products (
 		id, product_name, product_category, business_id, branch_id, 
@@ -302,6 +315,82 @@ func (r *ProductRepo) GetProductsByBranch(branchID string) ([]*domain.Product, e
 		p.UpdatedAt = updatedAt
 		p.DeletedAt = deletedAt
 		p.UpdatedBy = updatedBy
+		products = append(products, &p)
+	}
+	return products, nil
+}
+
+// QueryProductsNotification returns products for notification (in_stock, low_stock, expired) with pagination
+func (r *ProductRepo) QueryProductsNotification(businessID, op string, stock int, expiry int64, lowStock int, limit, offset int, expired bool) ([]*domain.Product, error) {
+	var (
+		products []*domain.Product
+		rows     *sqlx.Rows
+		err      error
+	)
+	base := `SELECT id, product_name, barcode_value, selling_price, quantity_in_stock, expiry_date FROM products WHERE business_id = ? AND (deleted_at IS NULL OR deleted_at = 0)`
+	var args []interface{}
+	args = append(args, businessID)
+	if expired {
+		base += " AND expiry_date IS NOT NULL AND expiry_date < ?"
+		args = append(args, expiry)
+	} else if op == ">" || op == "<" {
+		base += " AND quantity_in_stock " + op + " ?"
+		args = append(args, stock)
+	}
+	base += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+	rows, err = r.DB.Queryx(base, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var p domain.Product
+		err := rows.Scan(&p.ID, &p.ProductName, &p.BarcodeValue, &p.SellingPrice, &p.QuantityInStock, &p.ExpiryDate)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, &p)
+	}
+	return products, nil
+}
+
+// GetAllProductsPaginated returns all products for a business, paginated
+func (r *ProductRepo) GetAllProductsPaginated(businessID string, limit, offset int) ([]*domain.Product, error) {
+	query := `SELECT id, product_name, barcode_value, selling_price, quantity_in_stock, expiry_date FROM products WHERE business_id = ? AND (deleted_at IS NULL OR deleted_at = 0) ORDER BY created_at DESC LIMIT ? OFFSET ?`
+	rows, err := r.DB.Queryx(query, businessID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var products []*domain.Product
+	for rows.Next() {
+		var p domain.Product
+		err := rows.Scan(&p.ID, &p.ProductName, &p.BarcodeValue, &p.SellingPrice, &p.QuantityInStock, &p.ExpiryDate)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, &p)
+	}
+	return products, nil
+}
+
+// SearchProductsPaginated returns products matching search (fuzzy), paginated
+func (r *ProductRepo) SearchProductsPaginated(businessID, search string, limit, offset int) ([]*domain.Product, error) {
+	pattern := "%" + search + "%"
+	query := `SELECT id, product_name, barcode_value, selling_price, quantity_in_stock, expiry_date FROM products WHERE business_id = ? AND (deleted_at IS NULL OR deleted_at = 0) AND product_name LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
+	rows, err := r.DB.Queryx(query, businessID, pattern, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var products []*domain.Product
+	for rows.Next() {
+		var p domain.Product
+		err := rows.Scan(&p.ID, &p.ProductName, &p.BarcodeValue, &p.SellingPrice, &p.QuantityInStock, &p.ExpiryDate)
+		if err != nil {
+			return nil, err
+		}
 		products = append(products, &p)
 	}
 	return products, nil

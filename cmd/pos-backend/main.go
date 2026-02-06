@@ -105,7 +105,15 @@ func main() {
 	}
 	productRepo := &repository.ProductRepo{DB: sqlxDB}
 
+	// NotificationRepo and NotificationUsecase
+	notificationRepo := &repository.NotificationRepo{DB: sqlxDB}
+	notificationUC := &usecase.NotificationUsecase{NotificationRepo: notificationRepo}
+	handler.NotificationUC = notificationUC
+
 	authRepo := &repository.AuthRepo{}
+
+	saleRepo := repository.NewSaleRepo(db)
+	saleUC := &usecase.SaleUsecase{SaleRepo: saleRepo}
 
 	businessUC := &usecase.BusinessUsecase{BusinessRepo: businessRepo, BranchRepo: branchRepo}
 	branchUC := &usecase.BranchUsecase{BranchRepo: branchRepo}
@@ -117,6 +125,7 @@ func main() {
 	handler.StaffUC = staffUC
 	handler.ProductUC = productUC
 	handler.AuthRepo = authRepo
+	handler.SaleUC = saleUC
 
 	r := chi.NewRouter()
 	r.Use(middleware.LoggingMiddleware)
@@ -136,6 +145,7 @@ func main() {
 	r.Post("/api/business/register", handler.RegisterBusinessHandler)
 	r.Post("/api/business/login", handler.LoginHandler)
 	r.Post("/api/staff/login", handler.StaffLoginHandler)
+	r.Get("/health", handler.HealthCheckHandler)
 
 	// Protected endpoints
 	r.Group(func(protected chi.Router) {
@@ -145,6 +155,7 @@ func main() {
 		protected.With(middleware.NoQueryParamsMiddleware).Post("/api/branch/create", handler.CreateBranchHandler)
 		protected.With(middleware.NoQueryParamsMiddleware).Post("/api/staff/create", handler.CreateStaffHandler)
 		protected.With(middleware.NoQueryParamsMiddleware).Post("/api/product/add", handler.AddProductHandler)
+		protected.With(middleware.NoQueryParamsMiddleware).Post("/api/sales/create", handler.CreateSaleHandler)
 		protected.With(middleware.NoQueryParamsMiddleware).Post("/api/sync", handler.SyncDataHandler)
 		protected.With(middleware.NoQueryParamsMiddleware).Post("/api/auth/refresh", handler.RefreshTokenHandler)
 
@@ -154,6 +165,14 @@ func main() {
 		protected.Get("/api/staff/details", handler.GetStaffByIDHandler)
 		protected.Get("/api/products", handler.GetProductsHandler)
 		protected.Get("/api/product/{id}", handler.GetProductHandler)
+
+		// Notification endpoints
+		protected.Get("/api/notifications", handler.ListNotificationsHandler)
+		protected.Put("/api/notifications/{id}/read", handler.MarkNotificationReadHandler)
+		protected.Get("/api/search/products", handler.GetProductNotificationsHandler)
+
+		// Dashboard stats endpoint
+		protected.Get("/api/dashboard/stats", handler.GetDashboardStatsHandler)
 
 		// PUT/DELETE endpoints - query params allowed for resource IDs
 		protected.Put("/api/branch/update", handler.UpdateBranchHandler)

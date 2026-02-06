@@ -11,7 +11,11 @@ import (
 
 type contextKey string
 
-const businessIDKey contextKey = "business_id"
+const (
+	businessIDKey contextKey = "business_id"
+	userIDKey     contextKey = "user_id"
+	roleKey       contextKey = "role"
+)
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -25,13 +29,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		if authHeader == "" {
 			utils.Logger.Warn("Missing Authorization header - rejecting request")
 			writeAuthError(w, "Missing Authorization header", http.StatusUnauthorized)
-			return // ← Make sure this return is here!
+			return
 		}
 
 		if len(authHeader) <= 7 || authHeader[:7] != "Bearer " {
 			utils.Logger.Warn("Invalid Authorization format - rejecting request")
 			writeAuthError(w, "Invalid Authorization header format", http.StatusUnauthorized)
-			return // ← Make sure this return is here!
+			return
 		}
 
 		tokenStr := authHeader[7:]
@@ -39,24 +43,23 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			utils.Logger.Warn("Token parsing failed", zap.Error(err))
 			writeAuthError(w, "Invalid or expired token", http.StatusUnauthorized)
-			return // ← Make sure this return is here!
+			return
 		}
 
 		utils.Logger.Info("Token validated",
 			zap.String("userID", claims.UserID),
 			zap.String("role", claims.Role))
 
-		// Set business_id for owner, manager, cashier, inventory_staff
-		var ctx context.Context
-		switch claims.Role {
-		case "owner", "manager", "cashier", "inventory_staff":
-			ctx = contextWithBusinessID(r.Context(), claims.UserID)
-			utils.Logger.Info("BusinessID set in context", zap.String("businessID", claims.UserID))
-		default:
-			utils.Logger.Warn("Unauthorized role", zap.String("role", claims.Role))
-			writeAuthError(w, "Unauthorized role", http.StatusForbidden)
-			return // ← Make sure this return is here!
-		}
+		// Set business_id, user_id, and role for all authenticated users
+		ctx := r.Context()
+		ctx = contextWithBusinessID(ctx, claims.UserID)
+		ctx = contextWithUserID(ctx, claims.UserID)
+		ctx = contextWithRole(ctx, claims.Role)
+
+		utils.Logger.Info("Context values set",
+			zap.String("businessID", claims.UserID),
+			zap.String("userID", claims.UserID),
+			zap.String("role", claims.Role))
 
 		r = r.WithContext(ctx)
 		utils.Logger.Info("Proceeding to handler")
@@ -79,6 +82,14 @@ func contextWithBusinessID(ctx context.Context, businessID string) context.Conte
 	return context.WithValue(ctx, businessIDKey, businessID)
 }
 
+func contextWithUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
+}
+
+func contextWithRole(ctx context.Context, role string) context.Context {
+	return context.WithValue(ctx, roleKey, role)
+}
+
 // GetBusinessIDFromContext retrieves business_id from context
 func GetBusinessIDFromContext(ctx context.Context) (string, bool) {
 	val := ctx.Value(businessIDKey)
@@ -88,14 +99,40 @@ func GetBusinessIDFromContext(ctx context.Context) (string, bool) {
 	return "", false
 }
 
+// GetUserIDFromContext retrieves user_id from context
+func GetUserIDFromContext(ctx context.Context) (string, bool) {
+	val := ctx.Value(userIDKey)
+	if id, ok := val.(string); ok {
+		return id, true
+	}
+	return "", false
+}
+
+// GetRoleFromContext retrieves role from context
+func GetRoleFromContext(ctx context.Context) (string, bool) {
+	val := ctx.Value(roleKey)
+	if role, ok := val.(string); ok {
+		return role, true
+	}
+	return "", false
+}
+
 // NoQueryParamsMiddleware returns 404 if any query parameters are present
 // Use this for POST/PUT endpoints that should only accept data in the request body
 func NoQueryParamsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		utils.Logger.Info("NoQueryParamsMiddleware called",
+			zap.String("path", r.URL.Path),
+			zap.Int("query_params_count", len(r.URL.Query())),
+			zap.Any("query_params", r.URL.Query()))
+
 		if len(r.URL.Query()) > 0 {
+			utils.Logger.Warn("Request has query parameters - rejecting with 404")
 			http.Error(w, "404 page not found", http.StatusNotFound)
 			return
 		}
+
+		utils.Logger.Info("NoQueryParamsMiddleware passed - proceeding to handler")
 		next.ServeHTTP(w, r)
 	})
 }
