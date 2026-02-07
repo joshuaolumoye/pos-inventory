@@ -9,7 +9,9 @@ import (
 )
 
 type SaleUsecase struct {
-	SaleRepo domain.SaleRepository
+	SaleRepo       domain.SaleRepository
+	ProductRepo    domain.ProductRepository
+	NotificationUC *NotificationUsecase
 }
 
 type SaleItemRequest struct {
@@ -60,6 +62,17 @@ func (u *SaleUsecase) CreateSale(req *CreateSaleRequest, businessID, cashierID s
 	saleID, total, err := u.SaleRepo.CreateSale(sale, items)
 	if err != nil {
 		return nil, err
+	}
+
+	// After sale, check for low stock and create notification if needed
+	for _, item := range items {
+		product, err := u.ProductRepo.GetProductByID(item.ProductID)
+		if err == nil && product.QuantityInStock <= product.LowStockThreshold {
+			// Create notification if not already exists
+			if u.NotificationUC != nil {
+				_ = u.NotificationUC.CreateLowStockNotification(product.BusinessID, product.ID, product.ProductName, product.QuantityInStock)
+			}
+		}
 	}
 	return &CreateSaleResponse{
 		Success:     true,

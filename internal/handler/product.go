@@ -401,6 +401,7 @@ type NotificationListResponse struct {
 	Page          int                    `json:"page"`
 	PerPage       int                    `json:"per_page"`
 	Count         int                    `json:"count"`
+	UnreadCount   int                    `json:"unread_count"`
 }
 
 // ListNotificationsHandler returns notifications (paginated, unread filter)
@@ -432,14 +433,52 @@ func ListNotificationsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Get unread count
+	unreadList, err := NotificationUC.GetNotifications(businessID, true, 10000, 0)
+	unreadCount := 0
+	if err == nil {
+		unreadCount = len(unreadList)
+	}
 	resp := NotificationListResponse{
 		Notifications: notifications,
 		Page:          page,
 		PerPage:       perPage,
 		Count:         len(notifications),
+		UnreadCount:   unreadCount,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+// BatchMarkNotificationsReadRequest for batch update
+type BatchMarkNotificationsReadRequest struct {
+	IDs []string `json:"ids"`
+}
+
+// BatchMarkNotificationsReadHandler sets is_read=true for multiple notifications
+func BatchMarkNotificationsReadHandler(w http.ResponseWriter, r *http.Request) {
+	businessID, ok := middleware.GetBusinessIDFromContext(r.Context())
+	if !ok || businessID == "" {
+		http.Error(w, "missing or invalid business_id in token", http.StatusUnauthorized)
+		return
+	}
+	var req BatchMarkNotificationsReadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
+		http.Error(w, "invalid request body, must provide ids", http.StatusBadRequest)
+		return
+	}
+	failed := []string{}
+	for _, id := range req.IDs {
+		err := NotificationUC.MarkNotificationRead(id, businessID)
+		if err != nil {
+			failed = append(failed, id)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    len(failed) == 0,
+		"failed_ids": failed,
+	})
 }
 
 // MarkNotificationReadHandler sets is_read=true for a notification

@@ -113,7 +113,11 @@ func main() {
 	authRepo := &repository.AuthRepo{}
 
 	saleRepo := repository.NewSaleRepo(db)
-	saleUC := &usecase.SaleUsecase{SaleRepo: saleRepo}
+	saleUC := &usecase.SaleUsecase{
+		SaleRepo:       saleRepo,
+		ProductRepo:    productRepo,
+		NotificationUC: notificationUC,
+	}
 
 	businessUC := &usecase.BusinessUsecase{BusinessRepo: businessRepo, BranchRepo: branchRepo}
 	branchUC := &usecase.BranchUsecase{BranchRepo: branchRepo}
@@ -169,6 +173,7 @@ func main() {
 		// Notification endpoints
 		protected.Get("/api/notifications", handler.ListNotificationsHandler)
 		protected.Put("/api/notifications/{id}/read", handler.MarkNotificationReadHandler)
+		protected.Put("/api/notifications/read", handler.BatchMarkNotificationsReadHandler)
 		protected.Get("/api/search/products", handler.GetProductNotificationsHandler)
 
 		// Dashboard stats endpoint
