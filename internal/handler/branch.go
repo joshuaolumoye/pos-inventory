@@ -61,6 +61,7 @@ func GetBranchesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	search := r.URL.Query().Get("search")
 	branches, err := BranchUC.GetBranchesByBusinessID(businessID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -69,15 +70,17 @@ func GetBranchesHandler(w http.ResponseWriter, r *http.Request) {
 
 	var branchResponses []dto.BranchResponse
 	for _, branch := range branches {
-		branchResponses = append(branchResponses, dto.BranchResponse{
-			BranchID:      branch.ID,
-			BusinessID:    branch.BusinessID,
-			BranchName:    branch.BranchName,
-			BranchAddress: branch.BranchAddress,
-			IsMainBranch:  branch.IsMainBranch,
-			CreatedAt:     branch.CreatedAt,
-			UpdatedAt:     branch.UpdatedAt,
-		})
+		if search == "" || utils.FuzzyMatch(branch.BranchName, search) {
+			branchResponses = append(branchResponses, dto.BranchResponse{
+				BranchID:      branch.ID,
+				BusinessID:    branch.BusinessID,
+				BranchName:    branch.BranchName,
+				BranchAddress: branch.BranchAddress,
+				IsMainBranch:  branch.IsMainBranch,
+				CreatedAt:     branch.CreatedAt,
+				UpdatedAt:     branch.UpdatedAt,
+			})
+		}
 	}
 
 	resp := dto.BranchListResponse{

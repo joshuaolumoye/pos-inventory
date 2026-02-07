@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"math/rand"
 	"time"
@@ -35,4 +36,11 @@ func GenerateUUID() string {
 // Itoa is a helper for int to string conversion
 func Itoa(i int) string {
 	return fmt.Sprintf("%d", i)
+}
+
+// FuzzyMatch returns true if haystack contains needle (case-insensitive, partial match)
+func FuzzyMatch(haystack, needle string) bool {
+	haystackLower := strings.ToLower(haystack)
+	needleLower := strings.ToLower(needle)
+	return strings.Contains(haystackLower, needleLower)
 }
