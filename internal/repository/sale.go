@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"database/sql"
+
 	"github.com/joshuaolumoye/pos-backend/internal/domain"
 	"github.com/joshuaolumoye/pos-backend/internal/infrastructure"
 	"gorm.io/gorm"
@@ -29,13 +31,22 @@ func (r *SaleRepo) GetTotalSalesToday(businessID, branchID string) (int, error) 
 
 // GetTotalRevenue returns the total revenue (optionally filtered by branch)
 func (r *SaleRepo) GetTotalRevenue(businessID, branchID string) (float64, error) {
-	var total float64
+	// var total float64
 	query := r.DB.Model(&infrastructure.Sale{}).Select("SUM(total_amount)").Where("business_id = ?", businessID)
 	if branchID != "" {
 		query = query.Where("branch_id = ?", branchID)
 	}
-	err := query.Pluck("SUM(total_amount)", &total).Error
-	return total, err
+	// Handle NULL SUM(total_amount) gracefully
+
+	var result sql.NullFloat64
+	err := query.Row().Scan(&result)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, err
+	}
+	if !result.Valid {
+		return 0, nil
+	}
+	return result.Float64, nil
 }
 
 // GetRecentSales returns the 5 most recent sales (optionally filtered by branch)
